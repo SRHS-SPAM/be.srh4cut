@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{{ photo.title }}</h1>
+<img src="{{ photo.image.url }}" alt="{{ photo.title }}" width="500">
+
+<h2>QR 코드</h2>
+{% if photo.qr_code %}
+  <img src="{{ photo.qr_code.url }}" alt="QR Code" width="200">
+  <p>QR 코드를 스캔하면 이 사진 페이지로 접속할 수 있습니다.</p>
+{% else %}
+  <p>이 사진에 대한 QR 코드가 아직 생성되지 않았습니다.</p>
+{% endif %}
+
+<a href="{% url 'photo_list' %}">목록으로 돌아가기</a>
+{% endblock %}

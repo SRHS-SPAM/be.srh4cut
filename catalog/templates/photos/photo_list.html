@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>사진 목록</h1>
+<a href="{% url 'photo_create' %}">새 사진 올리기</a>
+<div class="photo-list">
+    {% for photo in photos %}
+    <div class="photo-item">
+        <a href="{% url 'photo_detail' photo.id %}">
+            <img src="{{ photo.image.url }}" alt="{{ photo.title }}" width="200">
+            <h3>{{ photo.title }}</h3>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
