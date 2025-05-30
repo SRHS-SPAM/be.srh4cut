@@ -6,8 +6,14 @@ from django.core.files import File
 from PIL import Image
 import uuid
 import os
-import win32print
-import win32api
+
+# Windows 전용 패키지는 조건부 import
+try:
+    import win32print
+    import win32api
+    WINDOWS_PRINTING_AVAILABLE = True
+except ImportError:
+    WINDOWS_PRINTING_AVAILABLE = False
 
 class Photo(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -48,8 +54,8 @@ class Photo(models.Model):
             filename = f'qr_{self.id}.png'
             self.qr_code.save(filename, File(buffer), save=False)
 
-            # 이미지와 QR 코드 합성
-            if self.image and os.path.isfile(self.image.path):
+            # 이미지와 QR 코드 합성 (Windows에서만 프린트)
+            if self.image and os.path.isfile(self.image.path) and WINDOWS_PRINTING_AVAILABLE:
                 self.print_image_with_qr(self.image.path, buffer)
 
             if not is_new:
@@ -61,6 +67,10 @@ class Photo(models.Model):
                 super().save(*args, **kwargs)
 
     def print_image_with_qr(self, image_path, qr_buffer):
+        if not WINDOWS_PRINTING_AVAILABLE:
+            print("프린터 기능은 Windows 환경에서만 사용 가능합니다.")
+            return
+            
         try:
             # 이미지 불러오기
             base_image = Image.open(image_path)
@@ -85,6 +95,10 @@ class Photo(models.Model):
             print(f"이미지 및 QR 코드 출력 오류: {e}")
 
     def print_image(self, filepath):
+        if not WINDOWS_PRINTING_AVAILABLE:
+            print("프린터 기능은 Windows 환경에서만 사용 가능합니다.")
+            return
+            
         try:
             printer_name = win32print.GetDefaultPrinter()
             print(f"사용 중인 프린터: {printer_name}")
