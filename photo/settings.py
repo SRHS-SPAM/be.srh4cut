@@ -67,8 +67,7 @@ ROOT_URLCONF = 'photo.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # React 빌드 폴더를 추가
-        'DIRS': [os.path.join(BASE_DIR, '../../front/build')],
+        'DIRS': [],  # React 빌드 폴더 제거
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -155,10 +154,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_DIRS = [
-    os.path.join(REACT_APP_DIR, 'build/static'),
-    os.path.join(BASE_DIR, 'public'),
-    os.path.join(BASE_DIR, 'build'),
-    
+    # React 관련 디렉토리 제거
 ]
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
