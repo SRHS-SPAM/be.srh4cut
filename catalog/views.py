@@ -10,6 +10,7 @@ import os
 from datetime import datetime
 from rest_framework.parsers import MultiPartParser, FormParser
 import logging
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,31 @@ def upload_photo(request):
     
     photo = serializer.save()
     logger.info("사진 업로드 성공")
-    return Response({'message': '업로드 및 출력 완료'}, status=status.HTTP_201_CREATED)
+    
+    # QR 코드 파일이 생성되었는지 확인하고 반환
+    if photo.qr_code and os.path.exists(photo.qr_code.path):
+        try:
+            # QR 코드 이미지를 직접 FileResponse로 반환
+            response = FileResponse(
+                open(photo.qr_code.path, 'rb'),
+                content_type='image/png',
+                filename=f'qr_code_{photo.id}.png'
+            )
+            
+            # 응답 헤더에 추가 정보 포함
+            response['X-Photo-ID'] = str(photo.id)
+            response['X-Photo-Title'] = photo.title
+            response['X-Download-URL'] = f"/api/photos/{photo.id}/download/"
+            
+            logger.info(f"QR 코드 반환 성공: {photo.qr_code.path}")
+            return response
+            
+        except Exception as e:
+            logger.error(f"QR 코드 파일 반환 오류: {e}")
+            return Response({"error": "QR 코드를 반환할 수 없습니다"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        logger.error("QR 코드가 생성되지 않았습니다")
+        return Response({"error": "QR 코드가 생성되지 않았습니다"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PhotoViewSet(viewsets.ModelViewSet):
     queryset = Photo.objects.all().order_by('-created_at')
@@ -70,15 +95,26 @@ class PhotoViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):
-        photo = self.get_object()
-        file_path = photo.image.path
-        
-        if os.path.exists(file_path):
-            response = FileResponse(open(file_path, 'rb'))
-            response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
-            return response
-        
-        return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            photo = self.get_object()
+            
+            if not photo.image:
+                return Response({"error": "이미지 파일이 없습니다"}, status=status.HTTP_404_NOT_FOUND)
+            
+            file_path = photo.image.path
+            
+            if os.path.exists(file_path):
+                response = FileResponse(
+                    open(file_path, 'rb'), 
+                    as_attachment=True,
+                    filename=f"{photo.title}_{photo.id}.jpg"
+                )
+                return response
+            else:
+                return Response({"error": "파일을 찾을 수 없습니다"}, status=status.HTTP_404_NOT_FOUND)
+            
+        except Exception as e:
+            return Response({"error": f"다운로드 오류: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # 날짜 보내주는 API
 def get_current_date(request):
@@ -95,9 +131,9 @@ from rest_framework.response import Response
 from .models import Photo
 
 # 그리고 Django에서 /api/get-csrf/ 라우트를 만들어서 CSRF 쿠키를 강제로 설정
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.http import JsonResponse
-
 @ensure_csrf_cookie
 def get_csrf(request):
-    return JsonResponse({'message': 'CSRF cookie set'})
+    return JsonResponse({
+        'message': 'CSRF cookie set',
+        'csrf_token': request.META.get('CSRF_COOKIE')
+    })
